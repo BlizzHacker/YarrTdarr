@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>YarrTdarr — 100% Free Multi-GPU Media Optimizer</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    :root { --bg:#0b0f17; --card:#131a26; --border:#233044; --text:#e6edf3; --muted:#8b9bb4; --accent:#22d3ee; --ok:#34d399; --warn:#fbbf24; --err:#f87171; }
+    * { box-sizing:border-box; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+    body { margin:0; background:var(--bg); color:var(--text); padding:20px; }
+    header { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:20px; }
+    h1 { margin:0; font-size:1.5rem; color:var(--accent); }
+    .sub { color:var(--muted); font-size:0.85rem; }
+    .btns { display:flex; gap:8px; flex-wrap:wrap; }
+    button { background:#1d283a; color:var(--text); border:1px solid var(--border); padding:8px 14px; border-radius:8px; cursor:pointer; font-weight:600; }
+    button:hover { border-color:var(--accent); }
+    .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:12px; margin-bottom:20px; }
+    .card { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:14px; }
+    .k { font-size:0.75rem; color:var(--muted); text-transform:uppercase; }
+    .v { font-size:1.6rem; font-weight:700; margin-top:4px; }
+    h2 { font-size:1.05rem; margin:18px 0 10px; color:var(--text); }
+    table { width:100%; border-collapse:collapse; background:var(--card); border:1px solid var(--border); border-radius:10px; overflow:hidden; font-size:0.85rem; }
+    th, td { padding:9px 12px; border-bottom:1px solid var(--border); text-align:left; }
+    th { color:var(--muted); font-weight:600; background:#0f1520; }
+    .bar { height:8px; background:#1f2937; border-radius:4px; overflow:hidden; width:140px; display:inline-block; vertical-align:middle; }
+    .bar > div { height:100%; background:var(--accent); }
+    .badge { padding:2px 8px; border-radius:99px; font-size:0.75rem; font-weight:600; }
+    .b-ok { background:#064e3b; color:var(--ok); }
+    .b-err { background:#450a0a; color:var(--err); }
+    .b-run { background:#164e63; color:var(--accent); }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>YarrTdarr</h1>
+      <div class="sub">100% Free &amp; Open Source (GPLv3) · Unlimited Workers · Zero Staging Limits · 4× Tesla P100 NVENC</div>
+    </div>
+    <div class="btns">
+      <button id="pauseBtn" onclick="togglePause()">Pause</button>
+      <button onclick="post('/api/scan-all')">Scan All Libraries</button>
+      <button onclick="post('/api/retry-errors')">Retry Errors</button>
+    </div>
+  </header>
+
+  <div class="grid">
+    <div class="card"><div class="k">Queued</div><div class="v" id="cQueued">-</div></div>
+    <div class="card"><div class="k">Processing</div><div class="v" id="cProc" style="color:var(--accent)">-</div></div>
+    <div class="card"><div class="k">Optimized</div><div class="v" id="cDone" style="color:var(--ok)">-</div></div>
+    <div class="card"><div class="k">Already Optimal</div><div class="v" id="cSkip">-</div></div>
+    <div class="card"><div class="k">Errors</div><div class="v" id="cErr" style="color:var(--err)">-</div></div>
+    <div class="card"><div class="k">Space Saved</div><div class="v" id="cSaved" style="color:var(--ok)">-</div></div>
+  </div>
+
+  <h2>GPU Workers</h2>
+  <table><thead><tr><th>GPU</th><th>Status</th><th>File</th><th>Progress</th><th>GPU / NVENC</th></tr></thead><tbody id="workersBody"></tbody></table>
+
+  <h2>Recent Activity</h2>
+  <table><thead><tr><th>File</th><th>Codec</th><th>Saved</th><th>Time</th><th>Status</th></tr></thead><tbody id="histBody"></tbody></table>
+
+  <script>
+    let isPaused = false;
+    function fmtBytes(b) {
+      if (!b) return "0 B";
+      const sign = b < 0 ? "-" : "";
+      b = Math.abs(b);
+      const u = ["B","KB","MB","GB","TB"]; let i = 0;
+      while (b >= 1024 && i < u.length - 1) { b /= 1024; i++; }
+      return sign + b.toFixed(1) + " " + u[i];
+    }
+    async function post(url) { await fetch(url, {method:"POST"}); refresh(); }
+    async function togglePause() { await post("/api/pause?paused=" + (!isPaused)); }
+    async function refresh() {
+      const s = await (await fetch("/api/stats")).json();
+      isPaused = s.paused;
+      document.getElementById("pauseBtn").textContent = isPaused ? "Resume Workers" : "Pause Workers";
+      document.getElementById("cQueued").textContent = s.counts.queued;
+      document.getElementById("cProc").textContent = s.counts.processing;
+      document.getElementById("cDone").textContent = s.counts.done;
+      document.getElementById("cSkip").textContent = s.counts.skipped;
+      document.getElementById("cErr").textContent = s.counts.error;
+      document.getElementById("cSaved").textContent = fmtBytes(s.bytes_saved);
+
+      const gpuMap = {};
+      for (const g of s.gpus) gpuMap[g.index] = g;
+      const wb = document.getElementById("workersBody");
+      wb.innerHTML = "";
+      for (const [gid, w] of Object.entries(s.workers)) {
+        const g = gpuMap[gid] || {};
+        const pct = w.pct || 0;
+        wb.innerHTML += `<tr>
+          <td>GPU ${gid} (${g.name || "P100"})</td>
+          <td><span class="badge ${w.status==='encoding'?'b-run':'b-ok'}">${w.status || 'idle'}</span></td>
+          <td>${w.file || "-"}</td>
+          <td><div class="bar"><div style="width:${pct}%"></div></div> ${pct}%</td>
+          <td>${g.gpu_util ?? 0}% / ${g.enc_util ?? 0}%</td>
+        </tr>`;
+      }
+
+      const h = await (await fetch("/api/history?limit=15")).json();
+      const hb = document.getElementById("histBody");
+      hb.innerHTML = "";
+      for (const r of h) {
+        hb.innerHTML += `<tr>
+          <td>${r.path.split("/").pop()}</td>
+          <td>${r.codec_before || "?"} → ${r.codec_after || "?"}</td>
+          <td>${fmtBytes(r.bytes_saved)}</td>
+          <td>${(r.duration_sec || 0).toFixed(1)}s</td>
+          <td><span class="badge ${r.status==='done'?'b-ok':'b-err'}">${r.status}</span></td>
+        </tr>`;
+      }
+    }
+    refresh();
+    setInterval(refresh, 3000);
+  </script>
+</body>
+</html>
