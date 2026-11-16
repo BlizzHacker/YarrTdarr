@@ -18,6 +18,12 @@ def get_conn() -> sqlite3.Connection:
     return conn
 
 
+def _ensure_column(conn: sqlite3.Connection, table: str, col: str, ddl: str) -> None:
+    cols = {r["name"] for r in conn.execute(f"PRAGMA table_info({table})").fetchall()}
+    if col not in cols:
+        conn.execute(f"ALTER TABLE {table} ADD COLUMN {col} {ddl}")
+
+
 def init_db() -> None:
     with _LOCK:
         conn = get_conn()
@@ -41,6 +47,7 @@ def init_db() -> None:
                 size_bytes INTEGER DEFAULT 0,
                 mtime REAL DEFAULT 0,
                 status TEXT NOT NULL DEFAULT 'queued',
+                priority INTEGER NOT NULL DEFAULT 0,
                 video_codec TEXT DEFAULT '',
                 audio_codecs TEXT DEFAULT '',
                 width INTEGER DEFAULT 0,
@@ -66,6 +73,7 @@ def init_db() -> None:
                 gpu_id INTEGER,
                 status TEXT,
                 message TEXT,
+                ffmpeg_cmd TEXT DEFAULT '',
                 finished_at REAL
             );
             CREATE TABLE IF NOT EXISTS settings (
@@ -74,13 +82,21 @@ def init_db() -> None:
             );
             """
         )
+        _ensure_column(conn, "files", "priority", "INTEGER NOT NULL DEFAULT 0")
+        _ensure_column(conn, "history", "ffmpeg_cmd", "TEXT DEFAULT ''")
         defaults = {
             "paused": "false",
             "gpu_workers": os.getenv("YARRTDARR_GPU_WORKERS", "4"),
-            "temp_dir": os.getenv("YARRTDARR_TEMP_DIR", "/temp"),
-            "cq": os.getenv("YARRTDARR_CQ", "23"),
+            "temp_dir": os.getenv("YARRTDARR_TEMP_DIR", "/mnt/lvm_shared/yarrtdarr-temp"),
+            "cq": os.getenv("YARRTDARR_CQ", "27"),
             "preset": os.getenv("YARRTDARR_PRESET", "p4"),
+            "maxrate_pct": os.getenv("YARRTDARR_MAXRATE_PCT", "80"),
             "min_free_temp_gb": os.getenv("YARRTDARR_MIN_FREE_GB", "10"),
+            "size_guard": "true",
+            "auto_accept": "true",
+            "plex_url": "",
+            "plex_token": "",
+            "discord_webhook": "",
         }
         for k, v in defaults.items():
             conn.execute("INSERT OR IGNORE INTO settings(key, value) VALUES(?, ?)", (k, v))
@@ -96,6 +112,14 @@ def get_setting(key: str, default: str = "") -> str:
         return row["value"] if row else default
 
 
+def get_all_settings() -> dict[str, str]:
+    with _LOCK:
+        conn = get_conn()
+        rows = conn.execute("SELECT key, value FROM settings").fetchall()
+        conn.close()
+        return {r["key"]: r["value"] for r in rows}
+
+
 def set_setting(key: str, value: str) -> None:
     with _LOCK:
         conn = get_conn()
@@ -104,16 +128,32 @@ def set_setting(key: str, value: str) -> None:
         conn.close()
 
 
-def upsert_library(lib_id: str, name: str, folder: str, target_codec: str = "hevc") -> None:
+def upsert_library(
+    lib_id: str,
+    name: str,
+    folder: str,
+    target_codec: str = "hevc",
+    target_container: str = "mkv",
+    add_aac_stereo: int = 1,
+    scan_interval_sec: int = 300,
+    enabled: int = 1,
+) -> None:
     with _LOCK:
         conn = get_conn()
         conn.execute(
             """
-            INSERT INTO libraries(id, name, folder, target_codec)
-            VALUES(?, ?, ?, ?)
-            ON CONFLICT(id) DO UPDATE SET name=excluded.name, folder=excluded.folder
+            INSERT INTO libraries(id, name, folder, enabled, target_codec, target_container, add_aac_stereo, scan_interval_sec)
+            VALUES(?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(id) DO UPDATE SET
+                name=excluded.name,
+                folder=excluded.folder,
+                enabled=excluded.enabled,
+                target_codec=excluded.target_codec,
+                target_container=excluded.target_container,
+                add_aac_stereo=excluded.add_aac_stereo,
+                scan_interval_sec=excluded.scan_interval_sec
             """,
-            (lib_id, name, folder, target_codec),
+            (lib_id, name, folder, enabled, target_codec, target_container, add_aac_stereo, scan_interval_sec),
         )
         conn.commit()
         conn.close()
@@ -151,7 +191,7 @@ def claim_next_file(gpu_id: int) -> dict[str, Any] | None:
             SELECT f.*, l.target_codec, l.target_container, l.add_aac_stereo
             FROM files f JOIN libraries l ON f.library_id = l.id
             WHERE f.status = 'queued' AND l.enabled = 1
-            ORDER BY f.id ASC LIMIT 1
+            ORDER BY f.priority DESC, f.id ASC LIMIT 1
             """
         ).fetchone()
         if not row:
@@ -193,6 +233,7 @@ def finish_file(
                     size_bytes=COALESCE(?, size_bytes),
                     mtime=COALESCE(?, mtime),
                     status=?,
+                    priority=0,
                     video_codec=?,
                     audio_codecs=?,
                     width=?,
@@ -223,17 +264,18 @@ def add_history(
     gpu_id: int,
     status: str,
     message: str = "",
+    ffmpeg_cmd: str = "",
 ) -> None:
     with _LOCK:
         conn = get_conn()
         conn.execute(
             """
-            INSERT INTO history(path, library_id, codec_before, codec_after, bytes_before, bytes_after, bytes_saved, duration_sec, gpu_id, status, message, finished_at)
-            VALUES(?,?,?,?,?,?,?,?,?,?,?,?)
+            INSERT INTO history(path, library_id, codec_before, codec_after, bytes_before, bytes_after, bytes_saved, duration_sec, gpu_id, status, message, ffmpeg_cmd, finished_at)
+            VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)
             """,
             (
                 path, library_id, codec_before, codec_after, bytes_before, bytes_after,
-                bytes_before - bytes_after, duration_sec, gpu_id, status, message, time.time(),
+                bytes_before - bytes_after, duration_sec, gpu_id, status, message, ffmpeg_cmd, time.time(),
             ),
         )
         conn.commit()

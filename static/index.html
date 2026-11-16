@@ -2,116 +2,419 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>YarrTdarr — 100% Free Multi-GPU Media Optimizer</title>
+  <title>YarrTdarr</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <style>
-    :root { --bg:#0b0f17; --card:#131a26; --border:#233044; --text:#e6edf3; --muted:#8b9bb4; --accent:#22d3ee; --ok:#34d399; --warn:#fbbf24; --err:#f87171; }
-    * { box-sizing:border-box; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
-    body { margin:0; background:var(--bg); color:var(--text); padding:20px; }
-    header { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:20px; }
-    h1 { margin:0; font-size:1.5rem; color:var(--accent); }
-    .sub { color:var(--muted); font-size:0.85rem; }
-    .btns { display:flex; gap:8px; flex-wrap:wrap; }
-    button { background:#1d283a; color:var(--text); border:1px solid var(--border); padding:8px 14px; border-radius:8px; cursor:pointer; font-weight:600; }
-    button:hover { border-color:var(--accent); }
-    .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:12px; margin-bottom:20px; }
-    .card { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:14px; }
-    .k { font-size:0.75rem; color:var(--muted); text-transform:uppercase; }
-    .v { font-size:1.6rem; font-weight:700; margin-top:4px; }
-    h2 { font-size:1.05rem; margin:18px 0 10px; color:var(--text); }
-    table { width:100%; border-collapse:collapse; background:var(--card); border:1px solid var(--border); border-radius:10px; overflow:hidden; font-size:0.85rem; }
-    th, td { padding:9px 12px; border-bottom:1px solid var(--border); text-align:left; }
-    th { color:var(--muted); font-weight:600; background:#0f1520; }
-    .bar { height:8px; background:#1f2937; border-radius:4px; overflow:hidden; width:140px; display:inline-block; vertical-align:middle; }
-    .bar > div { height:100%; background:var(--accent); }
-    .badge { padding:2px 8px; border-radius:99px; font-size:0.75rem; font-weight:600; }
-    .b-ok { background:#064e3b; color:var(--ok); }
-    .b-err { background:#450a0a; color:var(--err); }
-    .b-run { background:#164e63; color:var(--accent); }
+    :root {
+      --bg:#181b20; --sidebar:#121418; --card:#20242b; --card2:#262b33; --border:#2e3440;
+      --text:#e1e5eb; --muted:#8c96a6; --arr:#35c5f4; --arr2:#5d9cec;
+      --ok:#27c24c; --warn:#f0b90b; --err:#f05050;
+    }
+    * { box-sizing:border-box; font-family: "Inter", "Segoe UI", Roboto, system-ui, sans-serif; }
+    body { margin:0; background:var(--bg); color:var(--text); display:flex; min-height:100vh; }
+    aside { width:230px; background:var(--sidebar); border-right:1px solid var(--border); display:flex; flex-direction:column; flex-shrink:0; }
+    .brand { padding:18px 20px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:10px; }
+    .logo { width:28px; height:28px; border-radius:6px; background:linear-gradient(135deg,var(--arr),#7c3aed); display:grid; place-items:center; font-weight:800; color:#fff; font-size:15px; }
+    .brand h1 { margin:0; font-size:1.1rem; letter-spacing:0.3px; }
+    .brand small { display:block; font-size:0.7rem; color:var(--ok); font-weight:600; }
+    nav { padding:10px 0; flex:1; }
+    .nav-item { display:flex; align-items:center; justify-content:space-between; padding:11px 20px; color:var(--muted); cursor:pointer; font-size:0.9rem; font-weight:500; border-left:3px solid transparent; transition:0.15s; }
+    .nav-item:hover { background:#1a1e24; color:var(--text); }
+    .nav-item.active { background:#1e232a; color:var(--arr); border-left-color:var(--arr); font-weight:600; }
+    .pill { background:#2a303c; color:var(--text); font-size:0.72rem; padding:2px 7px; border-radius:99px; }
+    .side-foot { padding:14px 18px; border-top:1px solid var(--border); font-size:0.75rem; color:var(--muted); }
+    main { flex:1; display:flex; flex-direction:column; min-width:0; }
+    .topbar { height:56px; background:var(--card); border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; padding:0 22px; gap:12px; }
+    .topbar-title { font-weight:600; font-size:1rem; display:flex; align-items:center; gap:10px; }
+    .actions { display:flex; gap:8px; flex-wrap:wrap; }
+    button { background:#2a303b; color:var(--text); border:1px solid var(--border); padding:7px 13px; border-radius:5px; cursor:pointer; font-size:0.82rem; font-weight:600; }
+    button:hover { border-color:var(--arr); color:#fff; }
+    button.primary { background:var(--arr2); border-color:var(--arr2); color:#fff; }
+    button.danger { background:#3a1d22; border-color:#6b262f; color:#fca5a5; }
+    .content { padding:20px 24px; flex:1; overflow-y:auto; }
+    .view { display:none; }
+    .view.active { display:block; }
+    .kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:14px; margin-bottom:20px; }
+    .card { background:var(--card); border:1px solid var(--border); border-radius:6px; padding:14px 16px; }
+    .k { font-size:0.72rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.6px; }
+    .v { font-size:1.55rem; font-weight:700; margin-top:5px; }
+    .gpus { display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); gap:14px; margin-bottom:20px; }
+    .gpu-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; font-weight:600; font-size:0.88rem; }
+    .bar { height:7px; background:#14171c; border-radius:4px; overflow:hidden; margin:5px 0 9px; }
+    .bar > div { height:100%; background:var(--arr); transition:width 0.3s; }
+    .bar.ok > div { background:var(--ok); }
+    .bar.warn > div { background:var(--warn); }
+    h2 { font-size:0.95rem; text-transform:uppercase; letter-spacing:0.7px; color:var(--muted); margin:18px 0 10px; }
+    table { width:100%; border-collapse:collapse; background:var(--card); border:1px solid var(--border); border-radius:6px; overflow:hidden; font-size:0.84rem; }
+    th, td { padding:10px 12px; border-bottom:1px solid var(--border); text-align:left; vertical-align:middle; }
+    th { background:#181c22; color:var(--muted); font-weight:600; font-size:0.76rem; text-transform:uppercase; }
+    tr:hover td { background:#242932; }
+    .badge { padding:2px 8px; border-radius:4px; font-size:0.73rem; font-weight:700; display:inline-block; text-transform:uppercase; }
+    .b-ok { background:rgba(39,194,76,0.16); color:var(--ok); }
+    .b-run { background:rgba(53,197,244,0.16); color:var(--arr); }
+    .b-err { background:rgba(240,80,80,0.16); color:var(--err); }
+    .b-warn { background:rgba(240,185,11,0.16); color:var(--warn); }
+    .b-mute { background:#2a303b; color:var(--muted); }
+    .toolbar { display:flex; gap:10px; margin-bottom:14px; flex-wrap:wrap; align-items:center; }
+    input, select { background:#14171c; border:1px solid var(--border); color:var(--text); padding:7px 11px; border-radius:5px; font-size:0.84rem; }
+    .flow { display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin:14px 0 22px; }
+    .flow-node { background:var(--card2); border:1px solid var(--arr2); border-radius:8px; padding:12px 16px; min-width:165px; }
+    .flow-node b { display:block; font-size:0.86rem; color:var(--arr); margin-bottom:4px; }
+    .flow-node span { font-size:0.76rem; color:var(--muted); }
+    .arrow { color:var(--muted); font-size:1.2rem; font-weight:700; }
+    .form-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:14px; }
+    .field label { display:block; font-size:0.78rem; color:var(--muted); margin-bottom:5px; }
+    .field input, .field select { width:100%; }
+    pre { background:#111317; border:1px solid var(--border); padding:12px; border-radius:6px; overflow:auto; font-size:0.78rem; color:#cbd5e1; max-height:420px; }
+    .modal-bg { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.65); z-index:50; align-items:center; justify-content:center; }
+    .modal-bg.open { display:flex; }
+    .modal { background:var(--card); border:1px solid var(--border); border-radius:8px; padding:20px; width:min(760px,92vw); max-height:85vh; overflow:auto; }
+    @media (max-width:780px) { aside { width:68px; } .brand h1,.brand small,.nav-item span:first-child,.side-foot { display:none; } }
   </style>
 </head>
 <body>
-  <header>
-    <div>
-      <h1>YarrTdarr</h1>
-      <div class="sub">100% Free &amp; Open Source (GPLv3) · Unlimited Workers · Zero Staging Limits · 4× Tesla P100 NVENC</div>
+  <aside>
+    <div class="brand">
+      <div class="logo">Y</div>
+      <div><h1>YarrTdarr</h1><small>100% Free · Zero Limits</small></div>
     </div>
-    <div class="btns">
-      <button id="pauseBtn" onclick="togglePause()">Pause</button>
-      <button onclick="post('/api/scan-all')">Scan All Libraries</button>
-      <button onclick="post('/api/retry-errors')">Retry Errors</button>
+    <nav>
+      <div class="nav-item active" data-view="dashboard"><span>Dashboard</span><span class="pill" id="navProc">0</span></div>
+      <div class="nav-item" data-view="libraries"><span>Libraries</span><span class="pill" id="navLibs">0</span></div>
+      <div class="nav-item" data-view="queue"><span>Queue &amp; Files</span><span class="pill" id="navQueue">0</span></div>
+      <div class="nav-item" data-view="history"><span>History &amp; Reports</span></div>
+      <div class="nav-item" data-view="flow"><span>Pipeline / Flow</span></div>
+      <div class="nav-item" data-view="settings"><span>Settings</span></div>
+      <div class="nav-item" data-view="system"><span>System &amp; Logs</span></div>
+    </nav>
+    <div class="side-foot">
+      GPLv3 Open Source<br/>
+      Temp Free: <b id="sideTemp">-</b> GB
     </div>
-  </header>
+  </aside>
 
-  <div class="grid">
-    <div class="card"><div class="k">Queued</div><div class="v" id="cQueued">-</div></div>
-    <div class="card"><div class="k">Processing</div><div class="v" id="cProc" style="color:var(--accent)">-</div></div>
-    <div class="card"><div class="k">Optimized</div><div class="v" id="cDone" style="color:var(--ok)">-</div></div>
-    <div class="card"><div class="k">Already Optimal</div><div class="v" id="cSkip">-</div></div>
-    <div class="card"><div class="k">Errors</div><div class="v" id="cErr" style="color:var(--err)">-</div></div>
-    <div class="card"><div class="k">Space Saved</div><div class="v" id="cSaved" style="color:var(--ok)">-</div></div>
+  <main>
+    <div class="topbar">
+      <div class="topbar-title"><span id="viewTitle">Dashboard</span> <span class="badge b-ok" id="statusBadge">ACTIVE</span></div>
+      <div class="actions">
+        <button id="pauseBtn" onclick="togglePause()">Pause Workers</button>
+        <button class="primary" onclick="post('/api/scan-all')">Scan All</button>
+        <button onclick="post('/api/retry-errors')">Retry Errors</button>
+      </div>
+    </div>
+
+    <div class="content">
+      <!-- DASHBOARD -->
+      <section class="view active" id="view-dashboard">
+        <div class="kpis">
+          <div class="card"><div class="k">Queued</div><div class="v" id="cQueued">-</div></div>
+          <div class="card"><div class="k">Processing</div><div class="v" id="cProc" style="color:var(--arr)">-</div></div>
+          <div class="card"><div class="k">Optimized</div><div class="v" id="cDone" style="color:var(--ok)">-</div></div>
+          <div class="card"><div class="k">Optimal / Skipped</div><div class="v" id="cSkip">-</div></div>
+          <div class="card"><div class="k">Errors</div><div class="v" id="cErr" style="color:var(--err)">-</div></div>
+          <div class="card"><div class="k">Space Saved</div><div class="v" id="cSaved" style="color:var(--ok)">-</div></div>
+        </div>
+
+        <h2>4× Tesla P100 GPU Telemetry</h2>
+        <div class="gpus" id="gpuCards"></div>
+
+        <h2>Active GPU Workers</h2>
+        <table>
+          <thead><tr><th>Worker</th><th>Status</th><th>Current File</th><th>Progress</th><th>FPS / Speed</th><th>ETA</th></tr></thead>
+          <tbody id="workersBody"></tbody>
+        </table>
+
+        <h2>Library Codec Breakdown</h2>
+        <div class="kpis" id="codecCards" style="margin-top:10px"></div>
+      </section>
+
+      <!-- LIBRARIES -->
+      <section class="view" id="view-libraries">
+        <div class="toolbar">
+          <button class="primary" onclick="openLibModal()">+ Add Library</button>
+          <button onclick="post('/api/scan-all')">Scan All Enabled</button>
+        </div>
+        <table>
+          <thead><tr><th>Library</th><th>Folder</th><th>Target</th><th>Files</th><th>Done / Queued</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody id="libsBody"></tbody>
+        </table>
+      </section>
+
+      <!-- QUEUE -->
+      <section class="view" id="view-queue">
+        <div class="toolbar">
+          <select id="qStatus" onchange="loadFiles()">
+            <option value="queued">Queued</option>
+            <option value="processing">Processing</option>
+            <option value="error">Errors</option>
+            <option value="done">Optimized</option>
+            <option value="skipped">Skipped (Optimal)</option>
+            <option value="all">All Files</option>
+          </select>
+          <input id="qSearch" placeholder="Search filename or path..." oninput="loadFiles()" style="min-width:260px" />
+          <button onclick="loadFiles()">Refresh</button>
+        </div>
+        <table>
+          <thead><tr><th>File</th><th>Codec</th><th>Size</th><th>Status</th><th>Note / Error</th><th>Actions</th></tr></thead>
+          <tbody id="filesBody"></tbody>
+        </table>
+      </section>
+
+      <!-- HISTORY -->
+      <section class="view" id="view-history">
+        <table>
+          <thead><tr><th>File</th><th>Codec</th><th>Before → After</th><th>Saved</th><th>Duration</th><th>GPU</th><th>Status</th><th>Report</th></tr></thead>
+          <tbody id="histBody"></tbody>
+        </table>
+      </section>
+
+      <!-- FLOW -->
+      <section class="view" id="view-flow">
+        <div class="card">
+          <div class="k">Automated Optimization Pipeline (All Pro Features Unlocked)</div>
+          <div class="flow">
+            <div class="flow-node"><b>1. Stability Check</b><span>Waits for Sonarr/Radarr/qBit writes to settle</span></div>
+            <div class="arrow">→</div>
+            <div class="flow-node"><b>2. FFprobe Inspect</b><span>Reads video, pix_fmt, audio, duration</span></div>
+            <div class="arrow">→</div>
+            <div class="flow-node"><b>3. Smart Skip</b><span>Skips if already 8-bit HEVC + AAC + MKV</span></div>
+            <div class="arrow">→</div>
+            <div class="flow-node"><b>4. NVENC Encode</b><span>8-bit hevc_nvenc · CQ <span id="fCq">27</span> · <span id="fMax">80</span>% maxrate cap</span></div>
+            <div class="arrow">→</div>
+            <div class="flow-node"><b>5. Audio Direct Play</b><span>Keeps surround + adds AAC 2.0 192k track</span></div>
+            <div class="arrow">→</div>
+            <div class="flow-node"><b>6. Integrity &amp; Size Guard</b><span>Verifies duration &amp; discards if output ≥ 98%</span></div>
+            <div class="arrow">→</div>
+            <div class="flow-node"><b>7. Auto-Accept</b><span>Unlimited atomic replace (zero staging cap)</span></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SETTINGS -->
+      <section class="view" id="view-settings">
+        <div class="card">
+          <div class="form-grid" id="settingsForm"></div>
+          <div style="margin-top:16px"><button class="primary" onclick="saveSettings()">Save Settings</button></div>
+        </div>
+      </section>
+
+      <!-- SYSTEM -->
+      <section class="view" id="view-system">
+        <div class="toolbar"><button onclick="loadLogs()">Refresh Logs</button></div>
+        <pre id="logsBox">Loading...</pre>
+      </section>
+    </div>
+  </main>
+
+  <!-- JOB REPORT MODAL -->
+  <div class="modal-bg" id="reportModal" onclick="if(event.target===this)this.classList.remove('open')">
+    <div class="modal">
+      <h3 style="margin-top:0">Job Report</h3>
+      <pre id="reportContent"></pre>
+      <button onclick="document.getElementById('reportModal').classList.remove('open')">Close</button>
+    </div>
   </div>
 
-  <h2>GPU Workers</h2>
-  <table><thead><tr><th>GPU</th><th>Status</th><th>File</th><th>Progress</th><th>GPU / NVENC</th></tr></thead><tbody id="workersBody"></tbody></table>
-
-  <h2>Recent Activity</h2>
-  <table><thead><tr><th>File</th><th>Codec</th><th>Saved</th><th>Time</th><th>Status</th></tr></thead><tbody id="histBody"></tbody></table>
+  <!-- ADD LIBRARY MODAL -->
+  <div class="modal-bg" id="libModal" onclick="if(event.target===this)this.classList.remove('open')">
+    <div class="modal">
+      <h3 style="margin-top:0">Add / Update Library</h3>
+      <div class="form-grid">
+        <div class="field"><label>ID (slug)</label><input id="libId" placeholder="movies_new" /></div>
+        <div class="field"><label>Name</label><input id="libName" placeholder="Movies (New)" /></div>
+        <div class="field"><label>Folder Path</label><input id="libFolder" placeholder="/mnt/lvm_shared/MoviesNew" /></div>
+        <div class="field"><label>Target Codec</label><select id="libCodec"><option value="hevc">HEVC (x265 NVENC)</option><option value="h264">H.264 (NVENC)</option></select></div>
+      </div>
+      <div style="margin-top:14px;display:flex;gap:8px">
+        <button class="primary" onclick="saveLibrary()">Save Library</button>
+        <button onclick="document.getElementById('libModal').classList.remove('open')">Cancel</button>
+      </div>
+    </div>
+  </div>
 
   <script>
-    let isPaused = false;
+    let currentView = "dashboard", isPaused = false, lastStats = null, histCache = [];
+
+    document.querySelectorAll(".nav-item").forEach(el => {
+      el.onclick = () => {
+        document.querySelectorAll(".nav-item").forEach(x => x.classList.remove("active"));
+        document.querySelectorAll(".view").forEach(x => x.classList.remove("active"));
+        el.classList.add("active");
+        currentView = el.dataset.view;
+        document.getElementById("view-" + currentView).classList.add("active");
+        document.getElementById("viewTitle").textContent = el.querySelector("span").textContent;
+        if (currentView === "queue") loadFiles();
+        if (currentView === "history") loadHistory();
+        if (currentView === "settings") loadSettings();
+        if (currentView === "system") loadLogs();
+      };
+    });
+
     function fmtBytes(b) {
       if (!b) return "0 B";
-      const sign = b < 0 ? "-" : "";
-      b = Math.abs(b);
+      const sign = b < 0 ? "-" : ""; b = Math.abs(b);
       const u = ["B","KB","MB","GB","TB"]; let i = 0;
       while (b >= 1024 && i < u.length - 1) { b /= 1024; i++; }
       return sign + b.toFixed(1) + " " + u[i];
     }
     async function post(url) { await fetch(url, {method:"POST"}); refresh(); }
     async function togglePause() { await post("/api/pause?paused=" + (!isPaused)); }
+
     async function refresh() {
       const s = await (await fetch("/api/stats")).json();
+      lastStats = s;
       isPaused = s.paused;
       document.getElementById("pauseBtn").textContent = isPaused ? "Resume Workers" : "Pause Workers";
-      document.getElementById("cQueued").textContent = s.counts.queued;
+      const sb = document.getElementById("statusBadge");
+      sb.textContent = isPaused ? "PAUSED" : "ACTIVE";
+      sb.className = "badge " + (isPaused ? "b-warn" : "b-ok");
+
+      document.getElementById("navProc").textContent = s.counts.processing;
+      document.getElementById("navLibs").textContent = s.libraries.length;
+      document.getElementById("navQueue").textContent = s.counts.queued;
+      document.getElementById("sideTemp").textContent = s.temp_free_gb;
+
+      document.getElementById("cQueued").textContent = s.counts.queued.toLocaleString();
       document.getElementById("cProc").textContent = s.counts.processing;
-      document.getElementById("cDone").textContent = s.counts.done;
-      document.getElementById("cSkip").textContent = s.counts.skipped;
+      document.getElementById("cDone").textContent = s.counts.done.toLocaleString();
+      document.getElementById("cSkip").textContent = s.counts.skipped.toLocaleString();
       document.getElementById("cErr").textContent = s.counts.error;
       document.getElementById("cSaved").textContent = fmtBytes(s.bytes_saved);
 
-      const gpuMap = {};
-      for (const g of s.gpus) gpuMap[g.index] = g;
-      const wb = document.getElementById("workersBody");
-      wb.innerHTML = "";
-      for (const [gid, w] of Object.entries(s.workers)) {
-        const g = gpuMap[gid] || {};
-        const pct = w.pct || 0;
-        wb.innerHTML += `<tr>
-          <td>GPU ${gid} (${g.name || "P100"})</td>
-          <td><span class="badge ${w.status==='encoding'?'b-run':'b-ok'}">${w.status || 'idle'}</span></td>
-          <td>${w.file || "-"}</td>
-          <td><div class="bar"><div style="width:${pct}%"></div></div> ${pct}%</td>
-          <td>${g.gpu_util ?? 0}% / ${g.enc_util ?? 0}%</td>
-        </tr>`;
-      }
+      const gc = document.getElementById("gpuCards");
+      gc.innerHTML = s.gpus.map(g => {
+        const vramPct = Math.round((g.mem_used / g.mem_total) * 100);
+        return `<div class="card">
+          <div class="gpu-head"><span>GPU ${g.index} · ${g.name}</span><span class="badge b-mute">${g.temp}°C · ${g.power_w}W</span></div>
+          <div class="k">Compute ${g.gpu_util}% · NVENC ${g.enc_util}%</div>
+          <div class="bar"><div style="width:${Math.max(g.gpu_util, g.enc_util)}%"></div></div>
+          <div class="k">VRAM ${g.mem_used} / ${g.mem_total} MB (${vramPct}%)</div>
+          <div class="bar ${vramPct>85?'warn':'ok'}"><div style="width:${vramPct}%"></div></div>
+        </div>`;
+      }).join("");
 
-      const h = await (await fetch("/api/history?limit=15")).json();
-      const hb = document.getElementById("histBody");
-      hb.innerHTML = "";
-      for (const r of h) {
-        hb.innerHTML += `<tr>
-          <td>${r.path.split("/").pop()}</td>
-          <td>${r.codec_before || "?"} → ${r.codec_after || "?"}</td>
-          <td>${fmtBytes(r.bytes_saved)}</td>
-          <td>${(r.duration_sec || 0).toFixed(1)}s</td>
-          <td><span class="badge ${r.status==='done'?'b-ok':'b-err'}">${r.status}</span></td>
+      const wb = document.getElementById("workersBody");
+      wb.innerHTML = Object.entries(s.workers).map(([gid, w]) => {
+        const pct = w.pct || 0;
+        const badge = w.status === "encoding" ? "b-run" : (w.status === "disk_low" ? "b-err" : (w.status === "paused" ? "b-warn" : "b-ok"));
+        return `<tr>
+          <td><b>GPU ${gid}</b></td>
+          <td><span class="badge ${badge}">${w.status || "idle"}</span></td>
+          <td style="max-width:340px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${w.path||""}">${w.file || "-"}</td>
+          <td><div class="bar" style="width:120px;margin:0;display:inline-block"><div style="width:${pct}%"></div></div> ${pct}%</td>
+          <td>${w.fps ? w.fps + " fps" : "-"} ${w.speed ? "(" + w.speed + "x)" : ""}</td>
+          <td>${w.eta_sec ? w.eta_sec + "s" : "-"}</td>
         </tr>`;
-      }
+      }).join("");
+
+      document.getElementById("codecCards").innerHTML = Object.entries(s.codecs || {}).map(([c, n]) =>
+        `<div class="card"><div class="k">${c}</div><div class="v">${n.toLocaleString()}</div></div>`
+      ).join("");
+
+      document.getElementById("libsBody").innerHTML = s.libraries.map(l => `<tr>
+        <td><b>${l.name}</b></td>
+        <td><code>${l.folder}</code></td>
+        <td><span class="badge b-run">${l.target_codec}</span> <span class="badge b-mute">${l.target_container}</span> ${l.add_aac_stereo?'<span class="badge b-ok">AAC</span>':''}</td>
+        <td>${l.file_count}</td>
+        <td>${l.done_count} / ${l.queued_count}</td>
+        <td><span class="badge ${l.enabled?'b-ok':'b-warn'}">${l.enabled?'Enabled':'Paused'}</span></td>
+        <td>
+          <button onclick="post('/api/scan/${l.id}')">Scan</button>
+          <button onclick="post('/api/libraries/${l.id}/toggle')">${l.enabled?'Disable':'Enable'}</button>
+        </td>
+      </tr>`).join("");
+
+      if (currentView === "history") loadHistory();
     }
+
+    async function loadFiles() {
+      const st = document.getElementById("qStatus").value;
+      const q = encodeURIComponent(document.getElementById("qSearch").value);
+      const rows = await (await fetch(`/api/files?status=${st}&q=${q}&limit=100`)).json();
+      document.getElementById("filesBody").innerHTML = rows.map(r => `<tr>
+        <td title="${r.path}">${r.path.split("/").pop()}</td>
+        <td>${r.video_codec || "-"}</td>
+        <td>${fmtBytes(r.size_bytes)}</td>
+        <td><span class="badge ${r.status==='done'?'b-ok':(r.status==='error'?'b-err':(r.status==='processing'?'b-run':'b-mute'))}">${r.status}</span></td>
+        <td style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.error_msg || ""}</td>
+        <td>
+          <button onclick="post('/api/files/${r.id}/bump');setTimeout(loadFiles,300)">Bump</button>
+          <button onclick="post('/api/files/${r.id}/requeue');setTimeout(loadFiles,300)">Requeue</button>
+        </td>
+      </tr>`).join("");
+    }
+
+    async function loadHistory() {
+      histCache = await (await fetch("/api/history?limit=100")).json();
+      document.getElementById("histBody").innerHTML = histCache.map((r, idx) => `<tr>
+        <td title="${r.path}">${r.path.split("/").pop()}</td>
+        <td>${r.codec_before || "?"} → ${r.codec_after || "?"}</td>
+        <td>${fmtBytes(r.bytes_before)} → ${fmtBytes(r.bytes_after)}</td>
+        <td style="color:${r.bytes_saved>=0?'var(--ok)':'var(--err)'}">${fmtBytes(r.bytes_saved)}</td>
+        <td>${(r.duration_sec || 0).toFixed(1)}s</td>
+        <td>GPU ${r.gpu_id}</td>
+        <td><span class="badge ${r.status==='done'?'b-ok':(r.status==='skipped'?'b-mute':'b-err')}">${r.status}</span></td>
+        <td><button onclick="showReport(${idx})">Report</button></td>
+      </tr>`).join("");
+    }
+
+    function showReport(idx) {
+      const r = histCache[idx];
+      document.getElementById("reportContent").textContent =
+        `File: ${r.path}\nStatus: ${r.status}\nMessage: ${r.message}\nCodec: ${r.codec_before} -> ${r.codec_after}\nSize: ${fmtBytes(r.bytes_before)} -> ${fmtBytes(r.bytes_after)}\n\nFFmpeg Command:\n${r.ffmpeg_cmd || "(not recorded)"}`;
+      document.getElementById("reportModal").classList.add("open");
+    }
+
+    async function loadSettings() {
+      const s = await (await fetch("/api/settings")).json();
+      document.getElementById("fCq").textContent = s.cq || "27";
+      document.getElementById("fMax").textContent = s.maxrate_pct || "80";
+      const fields = [
+        ["cq", "NVENC Quality (CQ 18-32, lower=bigger)"],
+        ["preset", "NVENC Preset (p1-p7)"],
+        ["maxrate_pct", "Max Bitrate % of Source (e.g. 80)"],
+        ["temp_dir", "Temp Directory"],
+        ["min_free_temp_gb", "Min Free Temp Space (GB)"],
+        ["size_guard", "Size Guard (true/false - discard if bigger)"],
+        ["gpu_workers", "GPU Workers (requires restart)"],
+        ["plex_url", "Plex URL (optional)"],
+        ["discord_webhook", "Discord Webhook (optional)"],
+      ];
+      document.getElementById("settingsForm").innerHTML = fields.map(([k, lbl]) =>
+        `<div class="field"><label>${lbl}</label><input id="set_${k}" value="${s[k] ?? ''}" /></div>`
+      ).join("");
+    }
+
+    async function saveSettings() {
+      const payload = {};
+      document.querySelectorAll("[id^='set_']").forEach(el => payload[el.id.replace("set_", "")] = el.value);
+      await fetch("/api/settings", {method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload)});
+      alert("Settings saved!");
+      refresh();
+    }
+
+    function openLibModal() { document.getElementById("libModal").classList.add("open"); }
+    async function saveLibrary() {
+      await fetch("/api/libraries", {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({
+          id: document.getElementById("libId").value,
+          name: document.getElementById("libName").value,
+          folder: document.getElementById("libFolder").value,
+          target_codec: document.getElementById("libCodec").value,
+        })
+      });
+      document.getElementById("libModal").classList.remove("open");
+      refresh();
+    }
+
+    async function loadLogs() {
+      const d = await (await fetch("/api/logs?lines=100")).json();
+      document.getElementById("logsBox").textContent = (d.lines || []).join("\n");
+    }
+
     refresh();
-    setInterval(refresh, 3000);
+    setInterval(refresh, 2500);
   </script>
 </body>
 </html>
