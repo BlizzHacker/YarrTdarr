@@ -66,8 +66,14 @@ def _build_ffmpeg_cmd(
 
     if reencode_video:
         enc = "hevc_nvenc" if target_codec == "hevc" else "h264_nvenc"
-        # Pascal P100: 8-bit yuv420p, no B-frames for hevc_nvenc
+        # Pascal P100: 8-bit yuv420p, no B-frames for hevc_nvenc, cap maxrate at 80% of source bitrate
         cmd += ["-c:v", enc, "-gpu", str(gpu_id), "-pix_fmt", "yuv420p", "-rc", "vbr", "-cq", cq, "-b:v", "0", "-preset", preset]
+        try:
+            src_bps = int((src.stat().st_size * 8) / max(info.duration, 1.0))
+            max_kbps = max(600, int((src_bps * 0.80) / 1000))
+            cmd += ["-maxrate", f"{max_kbps}k", "-bufsize", f"{max_kbps * 2}k"]
+        except Exception:
+            pass
         if enc == "hevc_nvenc":
             cmd += ["-bf", "0"]
     else:
@@ -161,6 +167,30 @@ def process_one(job: dict[str, Any], gpu_id: int) -> None:
         bytes_before = src.stat().st_size
         bytes_after = tmp_out.stat().st_size
         bytes_saved = bytes_before - bytes_after
+
+        # Size Guard (absorbed from Unmanic/Tdarr): never replace with a larger file
+        if reencode_video and bytes_after >= int(bytes_before * 0.98):
+            tmp_out.unlink(missing_ok=True)
+            st_orig = src.stat()
+            finish_file(
+                file_id,
+                "skipped",
+                size_bytes=st_orig.st_size,
+                mtime=st_orig.st_mtime,
+                video_codec=info.video_codec,
+                audio_codecs=",".join(info.audio_codecs),
+                width=info.width,
+                height=info.height,
+                duration=info.duration,
+                bytes_saved=0,
+            )
+            add_history(
+                str(src), lib_id, info.video_codec, info.video_codec,
+                bytes_before, bytes_before, time.time() - t0, gpu_id, "skipped",
+                f"Kept original (encoded {bytes_after/(1024**2):.1f}MB >= source {bytes_before/(1024**2):.1f}MB)",
+            )
+            _set_worker(gpu_id, {"status": "idle"})
+            return
 
         # Atomic replacement: copy to .yarrtmp in target dir, fsync/rename, then remove old if extension changed
         _set_worker(gpu_id, {"file": src.name, "path": str(src), "pct": 99.9, "status": "replacing", "started": t0})
