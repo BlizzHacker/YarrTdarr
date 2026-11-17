@@ -83,6 +83,7 @@ def init_db() -> None:
             """
         )
         _ensure_column(conn, "files", "priority", "INTEGER NOT NULL DEFAULT 0")
+        _ensure_column(conn, "files", "force_reencode", "INTEGER NOT NULL DEFAULT 0")
         _ensure_column(conn, "history", "ffmpeg_cmd", "TEXT DEFAULT ''")
         defaults = {
             "paused": "false",
@@ -234,6 +235,7 @@ def finish_file(
                     mtime=COALESCE(?, mtime),
                     status=?,
                     priority=0,
+                    force_reencode=0,
                     video_codec=?,
                     audio_codecs=?,
                     width=?,

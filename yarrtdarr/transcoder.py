@@ -54,6 +54,7 @@ def _build_ffmpeg_cmd(
     cq: str,
     preset: str,
     maxrate_pct: int,
+    force_reencode: bool = False,
 ) -> list[str]:
     cmd = ["ffmpeg", "-y", "-hide_banner", "-progress", "pipe:1", "-nostats"]
     if reencode_video and info.video_codec not in ("av1", "vp9", "vp8", "theora"):
@@ -70,7 +71,8 @@ def _build_ffmpeg_cmd(
         cmd += ["-c:v", enc, "-gpu", str(gpu_id), "-pix_fmt", "yuv420p", "-rc", "vbr", "-cq", cq, "-b:v", "0", "-preset", preset]
         try:
             src_bps = int((src.stat().st_size * 8) / max(info.duration, 1.0))
-            max_kbps = max(600, int((src_bps * (maxrate_pct / 100.0)) / 1000))
+            eff_pct = 45 if force_reencode else maxrate_pct
+            max_kbps = max(600, int((src_bps * (eff_pct / 100.0)) / 1000))
             cmd += ["-maxrate", f"{max_kbps}k", "-bufsize", f"{max_kbps * 2}k"]
         except Exception:
             pass
@@ -124,6 +126,9 @@ def process_one(job: dict[str, Any], gpu_id: int) -> None:
         return
 
     needs_work, reencode_video, add_aac = _needs_transcode(info, target_codec, target_container, add_aac_stereo)
+    if job.get('force_reencode'):
+        needs_work = True
+        reencode_video = True
     if not needs_work:
         st = src.stat()
         finish_file(
@@ -136,7 +141,7 @@ def process_one(job: dict[str, Any], gpu_id: int) -> None:
 
     tmp_out = temp_dir / f"yarr_{file_id}_{int(t0)}.{target_container}"
     final_dst = src.with_suffix(f".{target_container}")
-    cmd = _build_ffmpeg_cmd(src, tmp_out, info, gpu_id, target_codec, reencode_video, add_aac, cq, preset, maxrate_pct)
+    cmd = _build_ffmpeg_cmd(src, tmp_out, info, gpu_id, target_codec, reencode_video, add_aac, cq, preset, maxrate_pct, bool(job.get('force_reencode')))
     cmd_str = " ".join(shlex.quote(c) for c in cmd)
 
     _set_worker(gpu_id, {"file": src.name, "path": str(src), "pct": 1.0, "fps": 0.0, "speed": 0.0, "eta_sec": 0, "status": "encoding", "started": t0})
